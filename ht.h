@@ -35,7 +35,7 @@ struct LinearProber : public Prober<KeyType> {
     {
         // Complete the condition below that indicates failure
         // to find the key or an empty slot
-        if( /* Fill me in */ ) {
+        if(this->numProbes_ >= this->m_) {
             return this->npos; 
         }
         HASH_INDEX_T loc = (this->start_ + this->numProbes_) % this->m_;
@@ -102,6 +102,7 @@ public:
     // To be completed
     HASH_INDEX_T next() 
     {
+      // for double hashing we need to do hash of hash?
 
 
 
@@ -307,14 +308,22 @@ HashTable<K,V,Prober,Hash,KEqual>::~HashTable()
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 bool HashTable<K,V,Prober,Hash,KEqual>::empty() const
 {
-
+  // use the vector functions 
+  if (this->table_.size() == 0) {
+    return true;
+  }
+  else {
+    return false;
+  }
 }
 
 // To be completed
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 size_t HashTable<K,V,Prober,Hash,KEqual>::size() const
 {
-
+  // the table is actually a vector so we can use the vector to complete 
+  // these functions here 
+  return (size_t)this->table_.size();
 }
 
 // To be completed
@@ -424,7 +433,7 @@ HASH_INDEX_T HashTable<K,V,Prober,Hash,KEqual>::probe(const KeyType& key) const
         }
         // fill in the condition for this else if statement which should 
         // return 'loc' if the given key exists at this location
-        else if(/* Fill me in */) {
+        else if(KEqual()(table_[loc]->item.first, key)) {
             return loc;
         }
         loc = prober_.next();
