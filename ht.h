@@ -413,6 +413,13 @@ typename HashTable<K,V,Prober,Hash,KEqual>::HashItem* HashTable<K,V,Prober,Hash,
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::resize()
 {
+  // for resize need to think of the proper steps to create and fill a hashtable 
+  
+  // create a larger hashtable to put the elements in 
+
+  // fill in the elements of the old table into the new hashtable
+
+  // update appropriate member variables and data members 
 
     
 }
