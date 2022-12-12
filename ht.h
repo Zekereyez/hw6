@@ -103,6 +103,12 @@ public:
     HASH_INDEX_T next() 
     {
       // for double hashing we need to do hash of hash?
+      if(this->numProbes_ >= this->m_) {
+            return this->npos; 
+        }
+        HASH_INDEX_T loc = (this->start_ + this->numProbes_ * dhstep_) % this->m_;
+        this->numProbes_++;
+        return loc;
 
 
 
@@ -271,7 +277,11 @@ private:
     HASH_INDEX_T mIndex_;  // index to CAPACITIES
 
     // ADD MORE DATA MEMBERS HERE, AS NECESSARY
-
+    // need ints for removed and insertion of elements 
+    // dont decrement the total or any other int 
+    int totalInsertions;
+    int totalRemovals;
+    double resizeAlpha_;
 };
 
 // ----------------------------------------------------------------------------
@@ -287,34 +297,55 @@ const HASH_INDEX_T HashTable<K,V,Prober,Hash,KEqual>::CAPACITIES[] =
         105359969, 210719881, 421439783, 842879579, 1685759167
     };
 
-// To be completed
+// COMPLETE!
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 HashTable<K,V,Prober,Hash,KEqual>::HashTable(
     double resizeAlpha, const Prober& prober, const Hasher& hash, const KEqual& kequal)
        :  hash_(hash), kequal_(kequal), prober_(prober)
 {
     // Initialize any other data members as necessary
-
+    totalInsertions = 0;
+    totalRemovals = 0;
+    resizeAlpha_ = resizeAlpha;
+    this->mIndex_ = 0;
+    for (HASH_INDEX_T i = 0; i < CAPACITIES[mIndex_]; ++i) {
+        // need to push back nullptr for the table vector because 
+        // an element/table may not exist in the current time
+        table_.push_back(nullptr);
+    }
 }
 
 // To be completed
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 HashTable<K,V,Prober,Hash,KEqual>::~HashTable()
 {
-
+  // iterate through the whole table and delete the entries 
+  HASH_INDEX_T i = 0;
+  for (; i < CAPACITIES[mIndex_]; ++i) {
+    delete table_[i];
+  }
+  // delete table_;
+  // should be good 
 }
 
 // To be completed
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 bool HashTable<K,V,Prober,Hash,KEqual>::empty() const
 {
-  // use the vector functions 
-  if (this->table_.size() == 0) {
-    return true;
+  // NEED to iterate through the vector and make sure that 
+  // the elements of the vector is nullptr
+  for (HASH_INDEX_T i = 0; i < CAPACITIES[mIndex_]; ++i) {
+      if (table_[i] != nullptr) {
+          return false;
+      }
   }
-  else {
-    return false;
-  }
+  return true;
+//   if (this->table_.size() == 0) {
+//     return true;
+//   }
+//   else {
+//     return false;
+//   }
 }
 
 // To be completed
@@ -327,19 +358,70 @@ size_t HashTable<K,V,Prober,Hash,KEqual>::size() const
 }
 
 // To be completed
+/**
+* @brief Inserts a new item into the map, or, if an item with the
+*        given key already exists, it updates the Value of that item
+*        with the second value of the pair, p
+* 
+* @param p Pair to insert  
+* @throw std::logic_error If no free location can be found
+*/
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::insert(const ItemType& p)
 {
+  // for insert what we need to do is probe until we find a valid location then 
+  // insert the key at that location and 
+  
+  // first we need to see if we can find the key and if so we then need to change 
+  // the value of it to the p that is trying to be inserted 
+  
+  // if we can't find the p this means that it is new and we need to so a real insert
 
+  // check the table and loading factor to make sure that we dont need to resize rn 
+  // check against resizeAlpha and if its greater eq then we call resize and update appro.
+  double currLoadFactor = (double)totalInsertions / CAPACITIES[mIndex_];
+  // we need to rezise when conditions meet
+  if (currLoadFactor >= resizeAlpha_) {
+    resize();
+  }
+  auto pKey = p.first;
+  auto foundKey = find(pKey);
+  // key is found
+  if (foundKey != nullptr) {
+      // we now have the key item by reference so we can make the appropriate change now
+      foundKey->second = p.second;
+  }
+  // key is not found so we insert it as expected
+  else {
+      // we need to find the position in which we can insert
+      HASH_INDEX_T hashIndex = probe(pKey);
+      // if we have a valid location
+      if (hashIndex != npos) {
+          table_[hashIndex] = new HashItem (p);
+      }
+      else {
+        throw std::logic_error("No Valid Insertion Location");
+      }
 
+      // need to keep track of the insertions
+      ++totalInsertions;
+  }
 }
 
 // To be completed
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::remove(const KeyType& key)
 {
-
-
+  // use the implemented internal find to find the key 
+  // then go and delete from there (or is it the find function?)
+  // should be the internal find as the find function just returns the item rather than
+  // the index/location of the key
+  // HashItem* item = internalFind(key);
+  HashItem* wantedKey = internalFind(key);
+  if (wantedKey != nullptr) {
+    wantedKey->deleted = true;
+  }
+  ++totalRemovals;
 }
 
 
@@ -419,8 +501,35 @@ void HashTable<K,V,Prober,Hash,KEqual>::resize()
 
   // fill in the elements of the old table into the new hashtable
 
-  // update appropriate member variables and data members 
-
+  // update appropriate member variables and data members @throws std::logic_error if no more CAPACITIES exists
+  
+  // error handling check - make sure the next index is valid before resizing
+  // get the size of the static array 
+  HASH_INDEX_T CAPACITYSIZE = sizeof(CAPACITIES) / sizeof(CAPACITIES[0]);
+  // if index is greater than the array capacities we throw error 
+  if (++mIndex_ >= CAPACITYSIZE) {
+    throw std::logic_error("No more CAPACITIES exist.");
+  }
+  // otherwise we continue as expected
+  // need to update m to new size
+  this->m_ = CAPACITIES[++mIndex_];
+  
+  HASH_INDEX_T i = 0;
+  for (; i < CAPACITIES[mIndex_]; ++i) {
+    // check if the item should be deleted or rehashed into new table
+    // auto table_
+    if (table_[i]->deleted == false) {
+        // this means rehash into new table 
+        // how do I call the hash function? do i need a new call to 
+        // init? 
+    }
+    // regardless of anything we need to delete the item in present table
+    delete table_[i];
+  }
+  // after inserting and shit you need a new capacities index 
+  // and redo the resizeAlpha loading factor, blah, blah
+  ++mIndex_;
+//   HASH_INDEX_T 
     
 }
 
