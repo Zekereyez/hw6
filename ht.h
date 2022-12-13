@@ -334,7 +334,7 @@ bool HashTable<K,V,Prober,Hash,KEqual>::empty() const
 {
   // NEED to iterate through the vector and make sure that 
   // the elements of the vector is nullptr
-  for (HASH_INDEX_T i = 0; i < CAPACITIES[mIndex_]; ++i) {
+  for (HASH_INDEX_T i = 0; i < CAPACITIES[this->mIndex_]; ++i) {
       if (table_[i] != nullptr) {
           return false;
       }
@@ -354,7 +354,7 @@ size_t HashTable<K,V,Prober,Hash,KEqual>::size() const
 {
   // the table is actually a vector so we can use the vector to complete 
   // these functions here 
-  return (size_t)this->table_.size();
+  return totalInsertions - totalRemovals;
 }
 
 // To be completed
@@ -382,7 +382,7 @@ void HashTable<K,V,Prober,Hash,KEqual>::insert(const ItemType& p)
   double currLoadFactor = (double)totalInsertions / CAPACITIES[mIndex_];
   // we need to rezise when conditions meet
   if (currLoadFactor >= resizeAlpha_) {
-    resize();
+    this->resize();
   }
   auto pKey = p.first;
   auto foundKey = find(pKey);
@@ -398,25 +398,22 @@ void HashTable<K,V,Prober,Hash,KEqual>::insert(const ItemType& p)
       // if we have a valid location
       if (hashIndex != npos) {
           table_[hashIndex] = new HashItem (p);
+          // need to keep track of the insertions
+        ++totalInsertions;
       }
       else {
         throw std::logic_error("No Valid Insertion Location");
       }
-
-      // need to keep track of the insertions
-      ++totalInsertions;
   }
 }
 
-// To be completed
+// COMPLETE!
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::remove(const KeyType& key)
 {
   // use the implemented internal find to find the key 
-  // then go and delete from there (or is it the find function?)
   // should be the internal find as the find function just returns the item rather than
   // the index/location of the key
-  // HashItem* item = internalFind(key);
   HashItem* wantedKey = internalFind(key);
   if (wantedKey != nullptr) {
     wantedKey->deleted = true;
@@ -512,28 +509,34 @@ void HashTable<K,V,Prober,Hash,KEqual>::resize()
   }
   // otherwise we continue as expected
   // need to update m to new size
-  this->m_ = CAPACITIES[++mIndex_];
-  
+  // this->m_ = CAPACITIES[this->mIndex_+1];
+  // this->m = mIndex_++;
+  // this is the new table that will be inserting into
+  std::vector<HashItem*> resizedTable;
+  for (HASH_INDEX_T i = 0; i < CAPACITIES[this->mIndex_+1]; ++i) {
+    resizedTable.push_back(nullptr);
+  }
+  // temp vector to hold the items to ensure not fucking anything up
+  std::vector<HashItem*> temp = this->table_;
+  this->table_ = resizedTable;
   HASH_INDEX_T i = 0;
-  for (; i < CAPACITIES[mIndex_]; ++i) {
+  for (; i < CAPACITIES[this->mIndex_]; ++i) {
     // check if the item should be deleted or rehashed into new table
-    // auto table_
-    if (table_[i]->deleted == false) {
-        // this means rehash into new table 
-        // how do I call the hash function? do i need a new call to 
-        // init? 
+    if ((temp[i] != nullptr)&&(!temp[i]->deleted)) {
+      this->insert(temp[i]->item);
     }
     // regardless of anything we need to delete the item in present table
-    delete table_[i];
+    // delete temp[i];
   }
   // after inserting and shit you need a new capacities index 
   // and redo the resizeAlpha loading factor, blah, blah
-  ++mIndex_;
-//   HASH_INDEX_T 
-    
+  // change the totalInsertions and totalRemovals-hesistant on this here 
+  totalInsertions -= totalRemovals;
+  totalRemovals = 0;
+  this->mIndex_++;
 }
 
-// Almost complete
+// COMPLETE!
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 HASH_INDEX_T HashTable<K,V,Prober,Hash,KEqual>::probe(const KeyType& key) const
 {
