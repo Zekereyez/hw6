@@ -95,7 +95,34 @@ bool boggleHelper(const std::set<std::string>& dict, const std::set<std::string>
 	// NOTES: 01 direction is like the left to right 
 	// 10 direction is the top to bottom direction
 	// 11 is the diagonal direction for searching - think word hunt 
+  // construct word
+  word += board[r][c];
+  // allow the dr and dc guide the path for finding items 
+  r += dr;
+  c += dc;
 	// base case 
-	// if (r < 0 || c <0 )
-
+	if (r < board.size() && c < board.size() && (prefix.find(word) != prefix.end())) {
+    if (!boggleHelper(dict, prefix, board, word, result, r, c, dr, dc)) {
+      // this means we need to see if the word is 
+      if (dict.find(word) != dict.end()) {
+        result.insert(word);
+				return true; // word was found so true;
+      }
+    }
+		// this else is necessary for passing the last test case because 
+		// it terminates the recursive call on a successfull call to boggleHelper
+		// meaning we have found the longest word rather than checking where we are with
+		// a boggleHelper false return as in base case
+		else {
+			return true;
+		}
+  }
+	// check if the word is in the dict and available for user at this level of recursion
+	else if (dict.find(word) != dict.end()) {
+		result.insert(word);
+		// word was found so return true for it 
+		return true;
+	}
+	// reached end of function so was not able to find a word at this length/recursive level
+	return false;
 }

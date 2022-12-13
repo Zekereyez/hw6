@@ -334,18 +334,12 @@ bool HashTable<K,V,Prober,Hash,KEqual>::empty() const
 {
   // NEED to iterate through the vector and make sure that 
   // the elements of the vector is nullptr
-  for (HASH_INDEX_T i = 0; i < CAPACITIES[this->mIndex_]; ++i) {
-      if (table_[i] != nullptr) {
-          return false;
-      }
+  if ((totalInsertions - totalRemovals) == 0) {
+    return true;
   }
-  return true;
-//   if (this->table_.size() == 0) {
-//     return true;
-//   }
-//   else {
-//     return false;
-//   }
+  else {
+    false;
+  }
 }
 
 // To be completed
@@ -400,6 +394,10 @@ void HashTable<K,V,Prober,Hash,KEqual>::insert(const ItemType& p)
           table_[hashIndex] = new HashItem (p);
           // need to keep track of the insertions
         ++totalInsertions;
+        // double currLoadFactor = (double)totalInsertions / CAPACITIES[mIndex_];
+        // if (currLoadFactor >= resizeAlpha_) {
+        //   this->resize();
+        // }
       }
       else {
         throw std::logic_error("No Valid Insertion Location");
@@ -417,8 +415,8 @@ void HashTable<K,V,Prober,Hash,KEqual>::remove(const KeyType& key)
   HashItem* wantedKey = internalFind(key);
   if (wantedKey != nullptr) {
     wantedKey->deleted = true;
+    ++totalRemovals;
   }
-  ++totalRemovals;
 }
 
 
@@ -519,10 +517,13 @@ void HashTable<K,V,Prober,Hash,KEqual>::resize()
   // temp vector to hold the items to ensure not fucking anything up
   std::vector<HashItem*> temp = this->table_;
   this->table_ = resizedTable;
+  // iterate through the temp vector which is the smaller table 
+  // if the item doesnt have the deleted bool raised we insert 
+  // otherwise we just ingnore
   HASH_INDEX_T i = 0;
   for (; i < CAPACITIES[this->mIndex_]; ++i) {
     // check if the item should be deleted or rehashed into new table
-    if ((temp[i] != nullptr)&&(!temp[i]->deleted)) {
+    if (!(temp[i]->deleted)) {
       this->insert(temp[i]->item);
     }
     // regardless of anything we need to delete the item in present table
