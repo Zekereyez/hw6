@@ -324,8 +324,6 @@ HashTable<K,V,Prober,Hash,KEqual>::~HashTable()
   for (; i < CAPACITIES[mIndex_]; ++i) {
     delete table_[i];
   }
-  // delete table_;
-  // should be good 
 }
 
 // To be completed
@@ -338,7 +336,7 @@ bool HashTable<K,V,Prober,Hash,KEqual>::empty() const
     return true;
   }
   else {
-    false;
+    return false;
   }
 }
 
@@ -346,8 +344,7 @@ bool HashTable<K,V,Prober,Hash,KEqual>::empty() const
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 size_t HashTable<K,V,Prober,Hash,KEqual>::size() const
 {
-  // the table is actually a vector so we can use the vector to complete 
-  // these functions here 
+  // size is the amount of non-deleted items 
   return totalInsertions - totalRemovals;
 }
 
@@ -363,46 +360,37 @@ size_t HashTable<K,V,Prober,Hash,KEqual>::size() const
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::insert(const ItemType& p)
 {
-  // for insert what we need to do is probe until we find a valid location then 
-  // insert the key at that location and 
-  
-  // first we need to see if we can find the key and if so we then need to change 
-  // the value of it to the p that is trying to be inserted 
-  
-  // if we can't find the p this means that it is new and we need to so a real insert
-
-  // check the table and loading factor to make sure that we dont need to resize rn 
-  // check against resizeAlpha and if its greater eq then we call resize and update appro.
+  // check to see if hashtable needs to be resized before an insertion because can be costly
   double currLoadFactor = (double)totalInsertions / CAPACITIES[mIndex_];
-  // we need to rezise when conditions meet
   if (currLoadFactor >= resizeAlpha_) {
     this->resize();
+    this->insert(p);
+    return;
   }
   auto pKey = p.first;
-  auto foundKey = find(pKey);
+  auto foundKey = this->find(pKey);
   // key is found
   if (foundKey != nullptr) {
       // we now have the key item by reference so we can make the appropriate change now
       foundKey->second = p.second;
+      return;
   }
   // key is not found so we insert it as expected
   else {
       // we need to find the position in which we can insert
-      HASH_INDEX_T hashIndex = probe(pKey);
+      HASH_INDEX_T hashIndex = this->probe(pKey);
       // if we have a valid location
       if (hashIndex != npos) {
           table_[hashIndex] = new HashItem (p);
           // need to keep track of the insertions
-        ++totalInsertions;
-        // double currLoadFactor = (double)totalInsertions / CAPACITIES[mIndex_];
-        // if (currLoadFactor >= resizeAlpha_) {
-        //   this->resize();
-        // }
+        totalInsertions++;
+        return;
       }
       else {
         throw std::logic_error("No Valid Insertion Location");
       }
   }
+
 }
 
 // COMPLETE!
@@ -412,10 +400,10 @@ void HashTable<K,V,Prober,Hash,KEqual>::remove(const KeyType& key)
   // use the implemented internal find to find the key 
   // should be the internal find as the find function just returns the item rather than
   // the index/location of the key
-  HashItem* wantedKey = internalFind(key);
+  HashItem* wantedKey = this->internalFind(key);
   if (wantedKey != nullptr) {
     wantedKey->deleted = true;
-    ++totalRemovals;
+    totalRemovals++;
   }
 }
 
@@ -500,15 +488,17 @@ void HashTable<K,V,Prober,Hash,KEqual>::resize()
   
   // error handling check - make sure the next index is valid before resizing
   // get the size of the static array 
+  // std::cout << "Entered into RESIZE" << std::endl;
   HASH_INDEX_T CAPACITYSIZE = sizeof(CAPACITIES) / sizeof(CAPACITIES[0]);
+  // std::cout << "CAP SIZE " << CAPACITYSIZE << std::endl;
+  // HASH_INDEX_T currCapacity = CAPACITIES[mIndex_];
   // if index is greater than the array capacities we throw error 
-  if (++mIndex_ >= CAPACITYSIZE) {
+  // if we are at the last current index of capacities then we know we cant increase any further
+  if (CAPACITIES[this->mIndex_+1] >= CAPACITYSIZE) {
     throw std::logic_error("No more CAPACITIES exist.");
   }
   // otherwise we continue as expected
-  // need to update m to new size
-  // this->m_ = CAPACITIES[this->mIndex_+1];
-  // this->m = mIndex_++;
+  
   // this is the new table that will be inserting into
   std::vector<HashItem*> resizedTable;
   for (HASH_INDEX_T i = 0; i < CAPACITIES[this->mIndex_+1]; ++i) {
@@ -517,24 +507,20 @@ void HashTable<K,V,Prober,Hash,KEqual>::resize()
   // temp vector to hold the items to ensure not fucking anything up
   std::vector<HashItem*> temp = this->table_;
   this->table_ = resizedTable;
-  // iterate through the temp vector which is the smaller table 
-  // if the item doesnt have the deleted bool raised we insert 
-  // otherwise we just ingnore
-  HASH_INDEX_T i = 0;
-  for (; i < CAPACITIES[this->mIndex_]; ++i) {
-    // check if the item should be deleted or rehashed into new table
-    if (!(temp[i]->deleted)) {
-      this->insert(temp[i]->item);
-    }
-    // regardless of anything we need to delete the item in present table
-    // delete temp[i];
-  }
-  // after inserting and shit you need a new capacities index 
-  // and redo the resizeAlpha loading factor, blah, blah
-  // change the totalInsertions and totalRemovals-hesistant on this here 
-  totalInsertions -= totalRemovals;
+  // Needed to reset the values of insertions to zero before
+  // looping through the values as it would incorrectly use the 
+  // previous values when called to resize hence made seg fault
+  totalInsertions = 0;
   totalRemovals = 0;
+  for (HASH_INDEX_T i = 0; i < CAPACITIES[mIndex_]; ++i) {
+    // check if the item should be deleted or rehashed into new table
+    if (temp[i]!= nullptr && !(temp[i]->deleted)) {
+      insert(temp[i]->item);
+      std::cout << " INSERTED " << std::endl;
+    }
+  }
   this->mIndex_++;
+  return;
 }
 
 // COMPLETE!
@@ -549,11 +535,13 @@ HASH_INDEX_T HashTable<K,V,Prober,Hash,KEqual>::probe(const KeyType& key) const
     while(Prober::npos != loc)
     {
         if(nullptr == table_[loc] ) {
+            std::cout << "LOC: Next avail spot " << loc << std::endl;
             return loc;
         }
         // fill in the condition for this else if statement which should 
         // return 'loc' if the given key exists at this location
         else if(KEqual()(table_[loc]->item.first, key)) {
+            std::cout << "LOC: Where key exists " << loc << std::endl;
             return loc;
         }
         loc = prober_.next();
