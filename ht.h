@@ -311,7 +311,7 @@ HashTable<K,V,Prober,Hash,KEqual>::HashTable(
     for (HASH_INDEX_T i = 0; i < CAPACITIES[mIndex_]; ++i) {
         // need to push back nullptr for the table vector because 
         // an element/table may not exist in the current time
-        table_.push_back(nullptr);
+        this->table_.push_back(nullptr);
     }
 }
 
@@ -322,7 +322,7 @@ HashTable<K,V,Prober,Hash,KEqual>::~HashTable()
   // iterate through the whole table and delete the entries 
   HASH_INDEX_T i = 0;
   for (; i < CAPACITIES[mIndex_]; ++i) {
-    delete table_[i];
+    delete this->table_[i];
   }
 }
 
@@ -349,14 +349,6 @@ size_t HashTable<K,V,Prober,Hash,KEqual>::size() const
 }
 
 // To be completed
-/**
-* @brief Inserts a new item into the map, or, if an item with the
-*        given key already exists, it updates the Value of that item
-*        with the second value of the pair, p
-* 
-* @param p Pair to insert  
-* @throw std::logic_error If no free location can be found
-*/
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::insert(const ItemType& p)
 {
@@ -474,24 +466,12 @@ typename HashTable<K,V,Prober,Hash,KEqual>::HashItem* HashTable<K,V,Prober,Hash,
 }
 
 
-// To be completed
+// COMPLETE!
 template<typename K, typename V, typename Prober, typename Hash, typename KEqual>
 void HashTable<K,V,Prober,Hash,KEqual>::resize()
 {
-  // for resize need to think of the proper steps to create and fill a hashtable 
-  
-  // create a larger hashtable to put the elements in 
-
-  // fill in the elements of the old table into the new hashtable
-
-  // update appropriate member variables and data members @throws std::logic_error if no more CAPACITIES exists
-  
-  // error handling check - make sure the next index is valid before resizing
-  // get the size of the static array 
-  // std::cout << "Entered into RESIZE" << std::endl;
+  // Get the capacity of the array
   HASH_INDEX_T CAPACITYSIZE = sizeof(CAPACITIES) / sizeof(CAPACITIES[0]);
-  // std::cout << "CAP SIZE " << CAPACITYSIZE << std::endl;
-  // HASH_INDEX_T currCapacity = CAPACITIES[mIndex_];
   // if index is greater than the array capacities we throw error 
   // if we are at the last current index of capacities then we know we cant increase any further
   if (CAPACITIES[this->mIndex_+1] >= CAPACITYSIZE) {
@@ -512,11 +492,10 @@ void HashTable<K,V,Prober,Hash,KEqual>::resize()
   // previous values when called to resize hence made seg fault
   totalInsertions = 0;
   totalRemovals = 0;
-  for (HASH_INDEX_T i = 0; i < CAPACITIES[mIndex_]; ++i) {
+  for (HASH_INDEX_T i = 0; i < CAPACITIES[this->mIndex_]; ++i) {
     // check if the item should be deleted or rehashed into new table
     if (temp[i]!= nullptr && !(temp[i]->deleted)) {
-      insert(temp[i]->item);
-      std::cout << " INSERTED " << std::endl;
+      this->insert(temp[i]->item);
     }
   }
   this->mIndex_++;
@@ -535,13 +514,11 @@ HASH_INDEX_T HashTable<K,V,Prober,Hash,KEqual>::probe(const KeyType& key) const
     while(Prober::npos != loc)
     {
         if(nullptr == table_[loc] ) {
-            std::cout << "LOC: Next avail spot " << loc << std::endl;
             return loc;
         }
         // fill in the condition for this else if statement which should 
         // return 'loc' if the given key exists at this location
         else if(KEqual()(table_[loc]->item.first, key)) {
-            std::cout << "LOC: Where key exists " << loc << std::endl;
             return loc;
         }
         loc = prober_.next();
