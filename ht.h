@@ -322,7 +322,9 @@ HashTable<K,V,Prober,Hash,KEqual>::~HashTable()
   // iterate through the whole table and delete the entries 
   HASH_INDEX_T i = 0;
   for (; i < CAPACITIES[mIndex_]; ++i) {
-    delete this->table_[i];
+    HashItem* hashItem = table_[i];
+    table_[i] = nullptr;
+    delete hashItem;
   }
 }
 
@@ -356,8 +358,6 @@ void HashTable<K,V,Prober,Hash,KEqual>::insert(const ItemType& p)
   double currLoadFactor = (double)totalInsertions / CAPACITIES[mIndex_];
   if (currLoadFactor >= resizeAlpha_) {
     this->resize();
-    this->insert(p);
-    return;
   }
   auto pKey = p.first;
   auto foundKey = this->find(pKey);
@@ -474,7 +474,7 @@ void HashTable<K,V,Prober,Hash,KEqual>::resize()
   HASH_INDEX_T CAPACITYSIZE = sizeof(CAPACITIES) / sizeof(CAPACITIES[0]);
   // if index is greater than the array capacities we throw error 
   // if we are at the last current index of capacities then we know we cant increase any further
-  if (CAPACITIES[this->mIndex_+1] >= CAPACITYSIZE) {
+  if (this->mIndex_ >= CAPACITYSIZE) {
     throw std::logic_error("No more CAPACITIES exist.");
   }
   // otherwise we continue as expected
@@ -492,14 +492,22 @@ void HashTable<K,V,Prober,Hash,KEqual>::resize()
   // previous values when called to resize hence made seg fault
   totalInsertions = 0;
   totalRemovals = 0;
-  for (HASH_INDEX_T i = 0; i < CAPACITIES[this->mIndex_]; ++i) {
+  this->mIndex_++;
+  for (HASH_INDEX_T i = 0; i < temp.size(); ++i) {
     // check if the item should be deleted or rehashed into new table
     if (temp[i]!= nullptr && !(temp[i]->deleted)) {
-      this->insert(temp[i]->item);
+      HashItem* tempHash = temp[i];
+      temp[i] = nullptr;
+      this->insert(tempHash->item);
+      delete tempHash;
+    }
+    // otherwise we need to delete appropriately
+    else if (temp[i]!= nullptr && (temp[i]->deleted)) {
+      HashItem* tempHash = temp[i];
+      temp[i] = nullptr;
+      delete tempHash;
     }
   }
-  this->mIndex_++;
-  return;
 }
 
 // COMPLETE!

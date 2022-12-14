@@ -22,6 +22,7 @@ struct MyStringHash {
     // hash function entry point (i.e. this is h(k))
     HASH_INDEX_T operator()(const std::string& k) const
     {
+      
         // Add your code here
 
         // this is where I need to hash the string into the array??
@@ -58,11 +59,6 @@ struct MyStringHash {
         }
 
         return hash;
-        
-
-        
-
-
     }
 
     // A likely helper function is to convert a-z,0-9 to an integral value 0-35
